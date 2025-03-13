@@ -1,0 +1,89 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, FlatList, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const App = () => {
+  const [projects, setProjects] = useState([
+    { id: '1', name: 'Projeto A', updates: [] },
+    { id: '2', name: 'Projeto B', updates: [] }
+  ]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [updateText, setUpdateText] = useState('');
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const loadProjects = async () => {
+    try {
+      const storedProjects = await AsyncStorage.getItem('projects');
+      if (storedProjects) {
+        setProjects(JSON.parse(storedProjects));
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar os projetos.');
+    }
+  };
+
+  const saveProjects = async (updatedProjects) => {
+    try {
+      await AsyncStorage.setItem('projects', JSON.stringify(updatedProjects));
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar os projetos.');
+    }
+  };
+
+  const addUpdate = () => {
+    if (!selectedProject) {
+      Alert.alert('Erro', 'Selecione um projeto antes de adicionar uma atualização.');
+      return;
+    }
+    if (!updateText.trim()) {
+      Alert.alert('Erro', 'O campo de atualização está vazio.');
+      return;
+    }
+    
+    const updatedProjects = projects.map(proj => 
+      proj.id === selectedProject.id 
+        ? { ...proj, updates: [...proj.updates, updateText] } 
+        : proj
+    );
+    
+    setProjects(updatedProjects);
+    saveProjects(updatedProjects);
+    setUpdateText('');
+    Alert.alert('Sucesso', 'Atualização adicionada com sucesso!');
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Atualização de Projetos</Text>
+      <FlatList 
+        data={projects} 
+        keyExtractor={item => item.id} 
+        renderItem={({ item }) => (
+          <Button title={item.name} onPress={() => setSelectedProject(item)} />
+        )} 
+      />
+      {selectedProject && (
+        <View>
+          <Text style={{ marginTop: 20 }}>Projeto Selecionado: {selectedProject.name}</Text>
+          <TextInput
+            placeholder="Digite a atualização"
+            value={updateText}
+            onChangeText={setUpdateText}
+            style={{ borderWidth: 1, padding: 10, marginVertical: 10 }}
+          />
+          <Button title="Adicionar Atualização" onPress={addUpdate} />
+          <FlatList 
+            data={selectedProject.updates} 
+            keyExtractor={(item, index) => index.toString()} 
+            renderItem={({ item }) => <Text>- {item}</Text>} 
+          />
+        </View>
+      )}
+    </View>
+  );
+};
+
+export default App;
